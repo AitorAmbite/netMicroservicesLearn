@@ -1,6 +1,8 @@
 version: '3.4'
 
 services:
+  # --------------------- DATABASES --------------------- 
+    # - catalog.db - 
   catalogdb:
     container_name: catalogdb
     restart: always
@@ -8,23 +10,27 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-
+    # - basket.db - 
   basketdb:
     container_name: basketdb
     restart: always
     ports:
       - "6379:6379"
-    
-  portainer:
-    container_name: portainer
+    # - discount.db - 
+  discountdb:
+    container_name: discountdb
     restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin1234
+      - POSTGRES_DB=DiscountDb
     ports:
-      - "8080:8000"
-      - "9000:9000"
+      - "5432:5432"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+      - postgres_data:/var/ib/postgresql/data/
 
+  # ---------------------  APIS / SERVICES --------------------- 
+    # - catalog.api - 
   catalog.api:
     container_name: catalog.api
     environment:
@@ -34,7 +40,7 @@ services:
       - catalogdb
     ports:
       - "8000:80"
-
+    # - basket.api - 
   basket.api:
     container_name: basket.api
     environment:
@@ -44,3 +50,41 @@ services:
       - basketdb
     ports:
       - "8001:80"
+
+    # - Discount.api -
+  discount.api:
+    container_name: discount.api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - "DatabaseSettings:ConnectionString:Server=localhost;port=5432;Database=DiscountDb;User Id=admin;Password=admin1234" 
+    depends_on:
+      - discountdb
+    ports:
+      - "8002:80"
+  # --------------------- UTILITIES --------------------- 
+    # - portainer -
+  portainer:
+    container_name: portainer
+    restart: always
+    ports:
+      - "8080:8000"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    # - pgadmin -
+  pgadmin:
+    container_name: pgadmin
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@aspnetrun.com
+      - PGADMIN_DEFAULT_PASSWORD=admin1234
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/root/.pgadmin
+
+
+
+
+# docker-compose -f .\docker-compose.yml -f .\docker-compose.override.yml up -d <---- comando para hacer compose
